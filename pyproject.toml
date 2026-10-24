@@ -1,0 +1,30 @@
+[project]
+name = "onshape_pawpy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "paw", email = "pawrequest@users.noreply.github.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "httpx>=0.28.1",
+]
+
+[project.scripts]
+onshape-var-convert = "onshape_pawpy.var_convert_cli:main"
+onshape-export = "onshape_pawpy.exporter:main"
+
+[build-system]
+requires = ["uv_build>=0.9.2,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "respx>=0.23.1",
+]
+
+[tool.pytest.ini_options]
+markers = ["live: hits the real Onshape API (needs ONSHAPE_TEST_API_KEY=access:secret)"]
+testpaths = ["tests"]
