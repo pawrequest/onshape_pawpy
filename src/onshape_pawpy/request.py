@@ -1,12 +1,12 @@
 from dataclasses import dataclass, field
 
 from onshape_pawpy.query import OnshapeQueryParams
-from onshape_pawpy.path import OnshapePath
+from onshape_pawpy.path import OnshapeIds
 
 
 @dataclass
 class OnshapeRequest:
-    path_params: OnshapePath
+    path_params: OnshapeIds
     query_params: OnshapeQueryParams = field(default_factory=OnshapeQueryParams)
     output_name: str = 'OnshapeExport'
 

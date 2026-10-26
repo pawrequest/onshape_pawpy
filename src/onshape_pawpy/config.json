@@ -1,0 +1,8 @@
+{
+  "API_VERSION": "v10",
+  "BASE_URL": "https://cad.onshape.com/api/",
+  "HEADERS": {
+    "Accept": "application/json;charset=UTF-8; qs=0.09",
+    "Content-Type": "application/json;charset=UTF-8; qs=0.09"
+  }
+}

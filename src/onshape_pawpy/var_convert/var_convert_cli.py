@@ -5,11 +5,10 @@ from __future__ import annotations
 import argparse
 import sys
 
-from .backends import Backend, ConfigBackend, PartStudioBackend, VariableStudioBackend
-from .client import OnshapeClient, OnshapeError, _load_dotenv
-from .convert import ConversionError, convert
-from .model import Kind
-from .urlparse import Location, parse_url
+from onshape_pawpy.backends import Backend, ConfigBackend, PartStudioBackend, VariableStudioBackend
+from onshape_pawpy.convert import ConversionError, convert
+from onshape_pawpy.model import Kind
+from onshape_pawpy.urlparse import Location, parse_url
 
 KINDS = [k.value for k in Kind]
 
@@ -110,6 +109,7 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, ConversionError, OnshapeError) as error:
         print(f'error: {error}', file=sys.stderr)
         return 1
+
 
 if __name__ == '__main__':
     sys.exit(main())

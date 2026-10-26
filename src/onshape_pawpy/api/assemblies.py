@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional
 
-from ids import OnshapeIds
 from onshape_sdk import AssemblyDefinition, BomTable, MateFeature, Occurrence
+
+from ..path import OnshapeIds
 from .api_base import ApiBase
 
 if TYPE_CHECKING:
@@ -20,16 +21,19 @@ class AssembliesApi(ApiBase):
     # ── Definition ────────────────────────────────────────────────────────────
 
     def get_definition(
-            self,
-            ids: OnshapeIds,
-            *,
-            include_mate_features: bool = False,
-            include_non_solids: bool = False,
+        self,
+        ids: OnshapeIds,
+        *,
+        include_mate_features: bool = False,
+        include_non_solids: bool = False,
     ) -> AssemblyDefinition:
         """Get the full assembly definition (parts, sub-assemblies, instances)."""
-        params: dict = {}
-        suffix = '/definition'
-        r = self.get(ids=ids, suffix=suffix, query_params=params or None)
+        params = {}
+        if include_mate_features:
+            params['includeMateFeatures'] = 'true'
+        if include_non_solids:
+            params['includeNonSolids'] = 'true'
+        r = self.get(ids=ids, suffix='/definition', query_params=params or None)
         if not isinstance(r, dict):
             raise TypeError('wrong type')
         return AssemblyDefinition.from_dict(r)
@@ -37,16 +41,16 @@ class AssembliesApi(ApiBase):
     # ── BOM ───────────────────────────────────────────────────────────────────
 
     def get_bom(
-            self,
-            ids: OnshapeIds,
-            *,
-            indented: bool = True,
-            multi_level: bool = True,
+        self,
+        ids: OnshapeIds,
+        *,
+        indented: bool = True,
+        multi_level: bool = True,
     ) -> BomTable:
         """Get the Bill of Materials for the assembly."""
         params: dict = {
-            "indented": str(indented).lower(),
-            "multiLevel": str(multi_level).lower(),
+            'indented': str(indented).lower(),
+            'multiLevel': str(multi_level).lower(),
         }
         suffix = '/bom'
         r = self.get_json(ids, suffix=suffix, query_params=params)
@@ -54,22 +58,16 @@ class AssembliesApi(ApiBase):
 
     # ── Features (mates) ─────────────────────────────────────────────────────
 
-    def get_features(
-            self,
-            ids: OnshapeIds
-    ) -> list[MateFeature]:
+    def get_features(self, ids: OnshapeIds) -> list[MateFeature]:
         """Get mate features in the assembly."""
-        suffix = "/features"
+        suffix = '/features'
         data = self.get_json(ids, suffix=suffix)
-        raw = data.get("features", data if isinstance(data, list) else [])
+        raw = data.get('features', data if isinstance(data, list) else [])
         return [MateFeature.from_dict(f) for f in raw if isinstance(f, dict)]
 
     # ── Occurrences ──────────────────────────────────────────────────────────
 
-    def get_occurrences(
-            self,
-            ids: OnshapeIds
-    ) -> list[Occurrence]:
+    def get_occurrences(self, ids: OnshapeIds) -> list[Occurrence]:
         """List all part occurrences with their transforms."""
         suffix = '/occurrences'
         r = self.get_json(ids, suffix=suffix)
@@ -80,40 +78,40 @@ class AssembliesApi(ApiBase):
     # ── Write operations ─────────────────────────────────────────────────────
 
     def insert_instance(
-            self,
-            did: str,
-            wid: str,
-            eid: str,
-            *,
-            document_id: str,
-            element_id: str,
-            part_id: Optional[str] = None,
-            version_id: Optional[str] = None,
-            is_assembly: bool = False,
+        self,
+        did: str,
+        wid: str,
+        eid: str,
+        *,
+        document_id: str,
+        element_id: str,
+        part_id: Optional[str] = None,
+        version_id: Optional[str] = None,
+        is_assembly: bool = False,
     ) -> dict[str, Any]:
         """Insert a part or sub-assembly instance into the assembly."""
         body: dict = {
-            "documentId": document_id,
-            "elementId": element_id,
-            "isAssembly": is_assembly,
+            'documentId': document_id,
+            'elementId': element_id,
+            'isAssembly': is_assembly,
         }
         if part_id:
-            body["partId"] = part_id
+            body['partId'] = part_id
         if version_id:
-            body["versionId"] = version_id
+            body['versionId'] = version_id
         r = self._c.post(
-            f"{self._path(did, 'w', wid, eid)}/instances",
+            f'{self._path(did, "w", wid, eid)}/instances',
             body=body,
         )
         r.raise_for_status()
         return r.json()
 
     def transform_occurrences(
-            self,
-            did: str,
-            wid: str,
-            eid: str,
-            transforms: list[dict],
+        self,
+        did: str,
+        wid: str,
+        eid: str,
+        transforms: list[dict],
     ) -> dict[str, Any]:
         """Apply transforms to occurrences.
 
@@ -124,8 +122,8 @@ class AssembliesApi(ApiBase):
             (list[float] — 16-element row-major 4×4 matrix).
         """
         r = self._c.post(
-            f"{self._path(did, 'w', wid, eid)}/occurrencetransforms",
-            body={"occurrences": transforms, "isRelative": True},
+            f'{self._path(did, "w", wid, eid)}/occurrencetransforms',
+            body={'occurrences': transforms, 'isRelative': True},
         )
         r.raise_for_status()
         return r.json()

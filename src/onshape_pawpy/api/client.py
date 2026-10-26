@@ -1,79 +1,82 @@
 """Thin Onshape REST client (API-key Basic auth)."""
 
-from __future__ import annotations
-
-import os
 import time
-from pathlib import Path
+from functools import cached_property
 from typing import Any
 
 import httpx
-from dotenv import load_dotenv
 from httpx import Response
+from pydantic import Field, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from ids import OnshapeIds
-
-API_VERSION = 'v10'
-BASE_URL = f'https://cad.onshape.com/api/{API_VERSION}'
-_HEADERS = {
-    'Accept': 'application/json;charset=UTF-8; qs=0.09',
-    'Content-Type': 'application/json;charset=UTF-8; qs=0.09',
-}
-PROJECT_ROOT = Path(__file__).parent.parent.parent
+from onshape_pawpy.api.assemblies_mod import AssembliesApi
+from onshape_pawpy.api.auth import OnshapeHmacAuth
+from onshape_pawpy.api.exceptions import OnshapeError
+from onshape_pawpy.api.util import PROJECT_ROOT
+from onshape_pawpy.path import OnshapeIds
 
 
-def build_path(ids: OnshapeIds, prefix: str = '', suffix: str = '') -> str:
-    """Build the ``/d/{did}/{wvm}/{wvm_id}[/e/{eid}]`` path fragment."""
-    did, wvm, wvm_id, eid = ids
-    path = f'{BASE_URL}{prefix}/d/{did}/{wvm}/{wvm_id}'
-    if eid:
-        path += f'/e/{eid}'
-    if suffix:
-        path += suffix
-    return path
+def default_headers() -> dict[str, str]:
+    """Return default headers for Onshape API requests."""
+    return {
+        'Accept': 'application/json;charset=UTF-8; qs=0.09',
+        'Content-Type': 'application/json;charset=UTF-8; qs=0.09',
+    }
 
 
-class OnshapeError(RuntimeError):
-    pass
+class OnshapeSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / '.env',
+        env_file_encoding='utf-8',
+    )
+    access_key: SecretStr = Field(..., alias='ONSHAPE_ACCESS_KEY')
+    secret_key: SecretStr = Field(..., alias='ONSHAPE_SECRET_KEY')
+    api_version: str = 'v10'
+    root_url: str = Field('https://cad.onshape.com/api', alias='ONSHAPE_BASE_URL')
+    headers: dict = Field(default_factory=default_headers)
+    max_retries: int = 3
 
+    @cached_property
+    def auth(self):
+        return OnshapeHmacAuth(self.access_key, self.secret_key)
 
-def _load_dotenv(path: Path = PROJECT_ROOT / '.env') -> None:
-    if not path.exists():
-        raise FileNotFoundError(f'.env file not found at {path}')
-    load_dotenv(dotenv_path=path, override=False)
+    @cached_property
+    def base_url(self):
+        return f'{self.root_url}/{self.api_version}'
 
 
 class OnshapeClient:
     def __init__(
-            self,
-            access_key: str | None = None,
-            secret_key: str | None = None,
-            transport: httpx.BaseTransport | None = None,
-            max_retries: int = 3,
+        self,
+        settings: OnshapeSettings,
+        transport: httpx.BaseTransport | None = None,
     ) -> None:
-        access = access_key or os.environ.get('ONSHAPE_ACCESS_KEY')
-        secret = secret_key or os.environ.get('ONSHAPE_SECRET_KEY')
-        if not access or not secret:
-            raise OnshapeError(
-                'ONSHAPE_ACCESS_KEY and ONSHAPE_SECRET_KEY must be set (env or .env).'
-            )
-        self._max_retries = max_retries
+        self._max_retries = settings.max_retries if settings else 3
+        self.settings = settings
         self._http = httpx.Client(
-            base_url=BASE_URL,
-            auth=(access, secret),
-            headers=_HEADERS,
+            base_url=self.settings.base_url,
+            auth=self.settings.auth,
+            headers=self.settings.headers,
             timeout=30,
             transport=transport,
         )
 
     def request(
-            self, method: str, path: str, *, json: Any = None, params: dict | None = None, fetch_next: bool = True
+        self,
+        method: str,
+        path: str,
+        *,
+        json: Any = None,
+        params: dict | None = None,
+        fetch_next: bool = True,
     ) -> Response:
         response = None
         for attempt in range(self._max_retries + 1):
-            response = self._http.request(method, path, json=json, params=params)
+            response = self._http.request(
+                method, path, json=json, params=params if params else None
+            )
             if response.status_code == 429 and attempt < self._max_retries:
-                time.sleep(float(response.headers.get('Retry-After', 2 ** attempt)))
+                time.sleep(float(response.headers.get('Retry-After', 2**attempt)))
                 continue
             break
         if not response:
@@ -84,16 +87,27 @@ class OnshapeClient:
             raise OnshapeError(f'{method} {path} -> {response.status_code}: {response.text[:500]}')
         if fetch_next and hasattr(response, 'next_request') and response.next_request:
             return self.get(response.next_request.url)
-        # try:
-        #     return response.json() if response and response.content else {}
-        # except (JSONDecodeError, UnicodeDecodeError):
         return response
 
-    def get(self, path: str, **params: Any) -> Any:
-        return self.request('GET', path, params=params or None)
+    def get(self, path: str, params: dict | None = None) -> Any:
+        return self.request('GET', path, params=params)
 
     def post(self, path: str, body: Any) -> Any:
         return self.request('POST', path, json=body)
 
     def delete(self, path: str) -> Any:
         return self.request('DELETE', path)
+
+    @property
+    def assemblies(self):
+        return AssembliesApi(client=self)
+
+
+if __name__ == '__main__':
+    ids = OnshapeIds.from_url(
+        r'https://cad.onshape.com/documents/9323f6caa9681a8ed00b5323/w/b3c14a29fe0d314db7853c55/e/188a1128c6d01fb539ddeffa'
+    )
+    settings_ = OnshapeSettings()
+    client = OnshapeClient(settings=settings_)
+    res = client.assemblies.get_definition(ids=ids)
+    ...

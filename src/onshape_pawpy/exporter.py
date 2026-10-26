@@ -3,7 +3,7 @@ from pathlib import Path
 from pprint import pprint
 
 from onshape_pawpy.client import OnshapeClient
-from onshape_pawpy.path import OnshapePath
+from onshape_pawpy.path import OnshapeIds
 from onshape_pawpy.parts import get_parts
 from onshape_pawpy.query import OnshapeQueryParams
 from onshape_pawpy.request import OnshapeRequest
@@ -82,19 +82,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None):
     args = parse_args(argv)
     query = OnshapeQueryParams(zipped=args.zipped, units='millimeter', scale=1)
-    path = OnshapePath.from_url(args.url)
-    on_request = OnshapeRequest(
+    path = OnshapeIds.from_url(args.url)
+    # path = OnshapePath.from_url(args.url)
+    request = OnshapeRequest(
         path_params=path,
         query_params=query,
         output_name=args.name,
     )
 
     # parts = get_parts(on_request, filter_text=FRAME)
-    parts = get_parts(on_request, filter_text=args.filter_text)
+    parts = get_parts(request, filter_text=args.filter_text)
     part_ids = [_.get('partId', '') for _ in parts]
-    on_request.query_params.partIds = ','.join(part_ids)
-    export_part_studio(on_request, output_dir=args.export_dir)
-    pprint(on_request.__dict__)
+    request.query_params.partIds = ','.join(part_ids)
+    export_part_studio(request, output_dir=args.export_dir)
+    pprint(request.__dict__)
 
 
 if __name__ == '__main__':

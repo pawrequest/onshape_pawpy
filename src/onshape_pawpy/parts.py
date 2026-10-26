@@ -1,17 +1,16 @@
 from typing import Any
 
-from onshape_pawpy.client import OnshapeClient
+from onshape_pawpy.api.client import OnshapeClient
 from onshape_pawpy.request import OnshapeRequest
 
 
 def get_parts(
     on_req: OnshapeRequest,
     *,
-    client: OnshapeClient | None = None,
+    client: OnshapeClient,
     filter_text: str = '',
     filter_case: bool = False,
 ) -> list[dict[str, Any]]:
-    client = client or OnshapeClient()
     parts_list_path = on_req.path_params.get_ps_parts()
     res = client.get(parts_list_path, **on_req.query_params.__dict__)
     if filter_text:

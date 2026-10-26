@@ -1,7 +1,7 @@
 import pytest
 
 from onshape_pawpy.backends import ConfigBackend, PartStudioBackend, VariableStudioBackend
-from onshape_pawpy.var_convert_cli import build_parser, run
+from onshape_pawpy.var_convert.var_convert_cli import build_parser, run
 from onshape_pawpy.convert import ConversionError
 from onshape_pawpy.urlparse import parse_url
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .client import OnshapeClient
+from .api.client import OnshapeClient
 from .model import (
     QUANTITY_TYPES,
     Kind,
