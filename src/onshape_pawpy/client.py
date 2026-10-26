@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+from dotenv import load_dotenv
 
 DEFAULT_BASE_URL = 'https://cad.onshape.com'
 DEFAULT_API_VERSION = 'v10'
@@ -25,14 +26,10 @@ class OnshapeError(RuntimeError):
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
-def load_dotenv(path: Path = PROJECT_ROOT / '.env') -> None:
+def _load_dotenv(path: Path = PROJECT_ROOT / '.env') -> None:
     if not path.exists():
-        return
-    for raw in path.read_text(encoding='utf-8').splitlines():
-        line = raw.strip()
-        if line and not line.startswith('#') and '=' in line:
-            key, _, value = line.partition('=')
-            os.environ.setdefault(key.strip(), value.strip().strip('\'"'))
+        raise FileNotFoundError(f'.env file not found at {path}')
+    load_dotenv(dotenv_path=path, override=False)
 
 
 class OnshapeClient:
@@ -63,7 +60,7 @@ class OnshapeClient:
         )
 
     def request(
-        self, method: str, path: str, *, json: Any = None, params: dict | None = None
+        self, method: str, path: str, *, json: Any = None, params: dict | None = None, fetch_next:bool = True
     ) -> Any:
         response = None
         for attempt in range(self._max_retries + 1):
@@ -74,7 +71,7 @@ class OnshapeClient:
             break
         if response and response.is_error:
             raise OnshapeError(f'{method} {path} -> {response.status_code}: {response.text[:500]}')
-        if hasattr(response, 'next_request') and response.next_request:
+        if fetch_next and hasattr(response, 'next_request') and response.next_request:
             return self.get(response.next_request.url)
         try:
             return response.json() if response and response.content else {}

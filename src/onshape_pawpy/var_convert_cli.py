@@ -6,7 +6,7 @@ import argparse
 import sys
 
 from .backends import Backend, ConfigBackend, PartStudioBackend, VariableStudioBackend
-from .client import OnshapeClient, OnshapeError, load_dotenv
+from .client import OnshapeClient, OnshapeError, _load_dotenv
 from .convert import ConversionError, convert
 from .model import Kind
 from .urlparse import Location, parse_url
@@ -103,7 +103,7 @@ def run(args: argparse.Namespace, client: OnshapeClient | None = None) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    load_dotenv()
+    _load_dotenv()
     args = build_parser().parse_args(argv)
     try:
         return run(args)
