@@ -9,7 +9,6 @@ authors = [
 requires-python = ">=3.14"
 dependencies = [
     "httpx>=0.28.1",
-    "onshape-sdk-zachsharma>=0.1.2",
 ]
 
 [project.scripts]
@@ -29,6 +28,3 @@ dev = [
 [tool.pytest.ini_options]
 markers = ["live: hits the real Onshape API (needs ONSHAPE_TEST_API_KEY=access:secret)"]
 testpaths = ["tests"]
-
-[tool.uv.sources]
-onshape-sdk-zachsharma = {path = "../onshape-sdk", editable = true}
