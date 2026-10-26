@@ -16,7 +16,7 @@ from .types import TranslationStatus
 from .utils import build_wvm_path
 
 if TYPE_CHECKING:
-    from .client import OnshapeClient
+    from .client_og import OnshapeClient
 
 
 class TranslationError(Exception):

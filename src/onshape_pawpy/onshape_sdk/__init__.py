@@ -9,7 +9,7 @@ Quick start
 >>> parts = client.parts.list(ids["did"], ids["wvm_type"], ids["wvm_id"], ids["eid"])
 """
 
-from .client import OnshapeClient
+from .client_og import OnshapeClient
 from .utils import OnshapeIds, build_wvm_path, parse_onshape_url
 
 # Types — re-exported so users can do ``from onshape_sdk import Document, Part, …``

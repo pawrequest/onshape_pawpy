@@ -8,7 +8,7 @@ from .api_version import API_VERSION_PATH
 from .types import Webhook
 
 if TYPE_CHECKING:
-    from .client import OnshapeClient
+    from .client_og import OnshapeClient
 
 
 class WebhooksApi:

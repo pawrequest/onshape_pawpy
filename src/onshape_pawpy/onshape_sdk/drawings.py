@@ -9,7 +9,7 @@ from .ids import OnshapeLoc
 from .types import DrawingView
 
 if TYPE_CHECKING:
-    from .client import OnshapeClient
+    from .client_og import OnshapeClient
 
 
 class DrawingsApi(ApiBase):

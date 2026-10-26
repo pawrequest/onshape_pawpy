@@ -9,7 +9,7 @@ from .types import Document, DocumentVersion, Element, PaginatedList, Workspace
 from .utils import build_wvm_path
 
 if TYPE_CHECKING:
-    from .client import OnshapeClient
+    from .client_og import OnshapeClient
 
 
 class DocumentsApi(ApiBase):
