@@ -19,13 +19,19 @@ class OnshapeIds(NamedTuple):
     wvmid: str  # workspace / version / microversion ID
     eid: str | None = None  # element ID
 
+    @property
+    def trim_eid(self):
+        return self[0:3]
+
     @classmethod
     def from_url(cls, url: str, **kwargs):
         match = ONSHAPE_PATH_PARAMS_REGEX.search(url.strip())
         if not match:
             raise ValueError(f'Not a valid Onshape element URL: {url!r}')
         from_url = match.groups()
-        return cls(*from_url, **kwargs)
+        res = cls(*from_url, **kwargs)
+        print(res)
+        return res
 
     def get_ps_parts(self):
         return rf'/parts/d/{self.did}/{self.wvm}/{self.wvmid}'

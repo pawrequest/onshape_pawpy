@@ -1,48 +1,19 @@
 """Thin Onshape REST client (API-key Basic auth)."""
 
+from __future__ import annotations
+
 import time
-from functools import cached_property
-from typing import Any
+from typing import Any, Self
 
 import httpx
 from httpx import Response
-from pydantic import Field, SecretStr
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, TypeAdapter
 
-from onshape_pawpy.api.assemblies_mod import AssembliesApi
-from onshape_pawpy.api.auth import OnshapeHmacAuth
+from onshape_pawpy.api.assemblies_mod import AssembliesApi, PartsApi
 from onshape_pawpy.api.exceptions import OnshapeError
-from onshape_pawpy.api.util import PROJECT_ROOT
+from onshape_pawpy.api.settings import OnshapeSettings
+from onshape_pawpy.api.util import _list_adapter, _body
 from onshape_pawpy.path import OnshapeIds
-
-
-def default_headers() -> dict[str, str]:
-    """Return default headers for Onshape API requests."""
-    return {
-        'Accept': 'application/json;charset=UTF-8; qs=0.09',
-        'Content-Type': 'application/json;charset=UTF-8; qs=0.09',
-    }
-
-
-class OnshapeSettings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=PROJECT_ROOT / '.env',
-        env_file_encoding='utf-8',
-    )
-    access_key: SecretStr = Field(..., alias='ONSHAPE_ACCESS_KEY')
-    secret_key: SecretStr = Field(..., alias='ONSHAPE_SECRET_KEY')
-    api_version: str = 'v10'
-    root_url: str = Field('https://cad.onshape.com/api', alias='ONSHAPE_BASE_URL')
-    headers: dict = Field(default_factory=default_headers)
-    max_retries: int = 3
-
-    @cached_property
-    def auth(self):
-        return OnshapeHmacAuth(self.access_key, self.secret_key)
-
-    @cached_property
-    def base_url(self):
-        return f'{self.root_url}/{self.api_version}'
 
 
 class OnshapeClient:
@@ -98,16 +69,75 @@ class OnshapeClient:
     def delete(self, path: str) -> Any:
         return self.request('DELETE', path)
 
+
+class OnshapeClient2(OnshapeClient):
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
+
+    def close(self) -> None:
+        self._http.close()
+
+    def _send(self, method: str, path: str, **kw: Any) -> bytes:
+        resp = self._http.request(method, path, **kw)
+        resp.raise_for_status()
+        return resp.content
+
+    def get_model[M: BaseModel](self, path: str, model: type[M], **kw: Any) -> M:
+        return model.model_validate_json(self._send('GET', path, **kw))
+
+    def get_list[M: BaseModel](self, path: str, model: type[M], **kw: Any) -> list[M]:
+        res = self._send('GET', path, **kw)
+        return _list_adapter(model).validate_json(res)
+
+    def post_model[M: BaseModel](
+        self, path: str, model: type[M], body: BaseModel | None = None, **kw: Any
+    ) -> M:
+        return model.model_validate_json(self._send('POST', path, json=_body(body), **kw))
+
+    def get_as[T](self, path: str, adapter: TypeAdapter[T], **kw: Any) -> T:
+        return adapter.validate_json(self._send('GET', path, **kw))
+
+    def request_as[T](self, method: str, path: str, adapter: TypeAdapter[T], **kw: Any) -> T:
+        return adapter.validate_json(self._send(method, path, **kw).content)
+
     @property
     def assemblies(self):
         return AssembliesApi(client=self)
 
+    # getdef = partialmethod(get_model, model=Assembly)
+
+    @property
+    def parts(self):
+        return PartsApi(client=self)
+
+#
+# def main1():
+#     ids = OnshapeIds.from_url(
+#         r'https://cad.onshape.com/documents/9323f6caa9681a8ed00b5323/w/b3c14a29fe0d314db7853c55/e/188a1128c6d01fb539ddeffa'
+#     )
+#     settings_ = OnshapeSettings()
+#     client = OnshapeClient(settings=settings_)
+#     res = client.assemblies.get_definition(ids=ids)
+#     ...
+
+
+def main_2():
+    if __name__ == '__main__':
+        settings_ = OnshapeSettings()
+        ids = OnshapeIds.from_url(
+            r'https://cad.onshape.com/documents/9323f6caa9681a8ed00b5323/w/b3c14a29fe0d314db7853c55/e/188a1128c6d01fb539ddeffa'
+        )
+        with OnshapeClient2(settings=settings_) as client:
+            res = client.parts.get_list(ids)
+            print(res)
+            res = client.assemblies.get_definition(ids)
+            print(res)
+            ...
+        ...
+
 
 if __name__ == '__main__':
-    ids = OnshapeIds.from_url(
-        r'https://cad.onshape.com/documents/9323f6caa9681a8ed00b5323/w/b3c14a29fe0d314db7853c55/e/188a1128c6d01fb539ddeffa'
-    )
-    settings_ = OnshapeSettings()
-    client = OnshapeClient(settings=settings_)
-    res = client.assemblies.get_definition(ids=ids)
-    ...
+    main_2()
